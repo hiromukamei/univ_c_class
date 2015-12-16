@@ -7,6 +7,9 @@
 char *read_line();
 char **split_line(char *line);
 void exec_command(char **argv);
+int check(char **argv);
+int do_exit(char **argv);
+int do_cd(char **argv);
 void welcome();
 
 int main(){
@@ -14,18 +17,23 @@ int main(){
 	char **argv;
 	pid_t pid;
 	int status;
+	int loop;
 
 	welcome();
 
 	while(1){
-		printf("kameshell> ");
+		printf("ksh> ");
 		line = read_line();
 		argv = split_line(line);
 
-		if(argv[0] == NULL){
+		loop = check(argv);
+		if(loop == 1){
+			free(line);
+			free(argv);
 			continue;
-		}else if(strcmp(argv[0], "exit") == 0){
-			printf("Bye!\n");
+		}else if(loop == -1){
+			free(line);
+			free(argv);
 			break;
 		}
 
@@ -40,10 +48,10 @@ int main(){
 
 		free(line);
 		free(argv);
-
 	}
 
 	return 0;
+
 }
 
 #define INPUT_BUFSIZE 512
@@ -116,14 +124,38 @@ char **split_line(char *line){
 }
 
 void exec_command(char **argv){
-	if(argv[0] == NULL){
-		exit(0);
-	}
-
 	if(execvp(argv[0], argv) == -1){
-		perror("shell: ");
+		perror("exec");
 		exit(1); //error時、制御が子プロセスに戻ってくるのでexit必須
 	}
+}
+
+int check(char **argv){
+	if(argv[0] == NULL){
+		return 1;
+	}else if(strcmp(argv[0], "exit") == 0){
+		return do_exit(argv);
+	}else if(strcmp(argv[0], "cd") == 0){
+		return do_cd(argv);
+	}
+
+	return 0;
+}
+
+int do_exit(char **argv){
+	printf("Bye!\n");
+	return -1;
+}
+
+int do_cd(char **argv){
+	if(argv[1] == NULL){
+		fprintf(stderr, "shell: expected argument to \"cd\"\n");
+	}else{
+		if(chdir(argv[1]) != 0){
+			perror("cd");
+		}
+	}
+	return 1;
 }
 
 void welcome(){
