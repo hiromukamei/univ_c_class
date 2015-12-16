@@ -1,50 +1,32 @@
 #include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <stdlib.h>
-#include <errno.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <string.h>
 
-#define MAX_ARGS 10
-#define MAX_INPUT 512
-
-void exec_command(char *argv[MAX_ARGS]);
+char *read_line();
+char **split_line(char *line);
+void exec_command(char **argv);
 void welcome();
 
 int main(){
-	char input[MAX_INPUT];
-	const char *delims = " \t\n";
-	int argc;
-	char *argv[MAX_ARGS];
-	char *cp;
+	char *line;
+	char **argv;
 	pid_t pid;
 	int status;
 
 	welcome();
 
 	while(1){
-		printf("kameshell >");
+		printf("kameshell> ");
+		line = read_line();
+		argv = split_line(line);
 
-		if(fgets(input, sizeof(input), stdin) == NULL){
-			printf("Bye!\n");
-			exit(0);
-		}
-
-
-		if(strcmp(input, "\n") == 0){
+		if(argv[0] == NULL){
 			continue;
-		}
- 
-		cp = input;
-		for(argc = 0; argc < MAX_ARGS - 1; argc++){ //execvpの引数として渡す時、最後がnullポインタでないといけないので、MAXまでつかえない
-			if((argv[argc] = strtok(cp, delims)) == NULL){
-				break;
-			}
-			cp = NULL;
-		}
-
-		if(strcmp(argv[0], "exit") == 0){
+		}else if(strcmp(argv[0], "exit") == 0){
 			printf("Bye!\n");
-			exit(0);
+			break;
 		}
 
 		pid = fork();
@@ -53,17 +35,94 @@ int main(){
 		}else if(pid > 0){
 			wait(&status);
 		}else{
-			perror("fork");
+			perror("fork: ");
 		}
+
+		free(line);
+		free(argv);
+
 	}
 
 	return 0;
 }
 
-void exec_command(char *argv[MAX_ARGS]){
+#define INPUT_BUFSIZE 512
+
+char *read_line(){
+	int bufsize = INPUT_BUFSIZE;
+	int position = 0;
+	char *buffer = malloc(sizeof(char) * bufsize);
+	int c;
+
+	if(!buffer){
+		fprintf(stderr, "shell: allocation error\n");
+		exit(1);
+	}
+
+	while(1){
+		c = getchar();
+
+		if(c == EOF || c == '\n'){
+			buffer[position] = '\0';
+			return buffer;
+		}else{
+			buffer[position] = c;
+		}
+		position++;
+
+		if(position == bufsize){
+			bufsize += INPUT_BUFSIZE;
+			buffer = realloc(buffer, bufsize);
+			if(!buffer){
+				fprintf(stderr, "shell: allocation error\n");
+				exit(1);
+			}
+		}
+	}
+}
+
+#define TOK_BUFSIZE 64
+#define TOK_DELIM " \t\n"
+
+char **split_line(char *line){
+	int bufsize = TOK_BUFSIZE;
+	int position = 0;
+	char **tokens = malloc(bufsize * sizeof(char*));
+	char *token;
+
+	if(!tokens){
+		fprintf(stderr, "shell: allocation error\n");
+		exit(1);
+	}
+
+	token = strtok(line, TOK_DELIM);
+	while(token != NULL){
+		tokens[position] = token;
+		position++;
+
+		if(position == bufsize){
+			bufsize += TOK_BUFSIZE;
+			tokens = realloc(tokens, bufsize * sizeof(char*));
+			if(!tokens){
+				fprintf(stderr, "shell: allocation error\n");
+				exit(1);
+			}
+		}
+
+		token = strtok(NULL, TOK_DELIM);
+	}
+	tokens[position] = NULL; //execvpに渡す時、最後にnull pointerが必要なため
+	return tokens;
+}
+
+void exec_command(char **argv){
+	if(argv[0] == NULL){
+		exit(0);
+	}
+
 	if(execvp(argv[0], argv) == -1){
-		perror("Error: ");
-		exit(0); //error時、制御が子プロセスに戻ってくるので子プロセスをkillする
+		perror("shell: ");
+		exit(1); //error時、制御が子プロセスに戻ってくるのでexit必須
 	}
 }
 
