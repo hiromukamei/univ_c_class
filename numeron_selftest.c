@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-char *judge(char *input, char *answer, char *result){
+void judge(char *input, char *answer, char *result){
 	int h = 0;
 	int b = 0;
 	int i, j;
@@ -19,9 +19,6 @@ char *judge(char *input, char *answer, char *result){
 	}
 
 	sprintf(result, "%dh%db", h, b);
-
-	return result;
-
 }
 
 int main(){
