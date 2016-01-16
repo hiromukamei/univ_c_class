@@ -77,7 +77,7 @@ int main(int argc, char *argv[]){
 		read(sockfd, buf, BUF_SIZE);
  		if(strcmp(buf, end) == 0){
 			printf("you lose\n");
-			exit(0);
+			break;
 		}
 		printf("%s\n", buf);
 		/* call number */
@@ -91,9 +91,11 @@ int main(int argc, char *argv[]){
 		read(sockfd, buf, BUF_SIZE);
 		if(strcmp(buf, end) == 0){
 			printf("you win\n");
-			exit(0);
+			break;
 		}
 
 		printf("%s\n", buf);
 	}
+
+	exit(0);
 }
